@@ -20,10 +20,20 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <!-- Two plain TextViews instead of a colored span: some TV runtimes ignore spans. -->
             <TextView
-                android:id="@+id/brand"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:text="NXT"
+                android:textColor="@color/accent"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="IPTV"
                 android:textColor="@color/text"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -274,7 +284,7 @@
                                 android:ellipsize="end"
                                 android:maxWidth="320dp"
                                 android:singleLine="true"
-                                android:textColor="@color/accent"
+                                android:textColor="@color/text_dim"
                                 android:textSize="14sp" />
                         </LinearLayout>
                     </LinearLayout>

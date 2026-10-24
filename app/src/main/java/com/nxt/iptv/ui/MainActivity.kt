@@ -120,7 +120,6 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         numberView = findViewById(R.id.numberView)
         loading = findViewById(R.id.loading)
         clock = findViewById(R.id.clock)
-        findViewById<TextView>(R.id.brand).text = brandTitle(this)
         topButtons = listOf(
             findViewById(R.id.btnSearch), findViewById(R.id.btnPlaylists),
             findViewById(R.id.btnSettings), findViewById(R.id.btnExit),

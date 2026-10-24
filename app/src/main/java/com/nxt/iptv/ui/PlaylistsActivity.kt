@@ -36,7 +36,9 @@ class PlaylistsActivity : BaseActivity() {
         repo.seedDefaults()
         ImageLoader.init(this)
 
-        findViewById<TextView>(R.id.logo).text = brandTitle(this)
+        findViewById<TextView>(R.id.version).text = runCatching {
+            "v" + packageManager.getPackageInfo(packageName, 0).versionName
+        }.getOrDefault("")
         list = findViewById(R.id.list)
         empty = findViewById(R.id.empty)
         btnAdd = findViewById(R.id.btnAdd)
