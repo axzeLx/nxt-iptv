@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="playlists">Playlistler</string>
+    <string name="add_playlist">Playlist ekle</string>
+    <string name="edit_playlist">Playlist düzenle</string>
+    <string name="no_playlists">Henüz playlist yok.\nİzlemeye başlamak için bir M3U playlist ekleyin.</string>
+    <string name="playlist_name">Ad</string>
+    <string name="playlist_name_hint">Benim TV</string>
+    <string name="playlist_url">M3U / M3U8 adresi</string>
+    <string name="or_file">…ya da dosyadan yükleyin</string>
+    <string name="choose_file">Dosya seç</string>
+    <string name="browse_storage">Cihaz depolamasına göz at</string>
+    <string name="system_picker">Sistem dosya seçici</string>
+    <string name="save">Kaydet</string>
+    <string name="cancel">İptal</string>
+    <string name="delete">Sil</string>
+    <string name="refresh">Yenile</string>
+    <string name="edit">Düzenle</string>
+    <string name="loading">Yükleniyor…</string>
+    <string name="downloading">Playlist indiriliyor…</string>
+    <string name="favorites">Favoriler</string>
+    <string name="categories">Kategoriler</string>
+    <string name="all_channels">Tüm kanallar</string>
+    <string name="uncategorized">Diğer</string>
+    <string name="search">Ara</string>
+    <string name="settings">Ayarlar</string>
+    <string name="search_hint">Kanal adı</string>
+    <string name="search_results">Arama: %1$s</string>
+    <plurals name="channels_count">
+        <item quantity="one">%1$d kanal</item>
+        <item quantity="other">%1$d kanal</item>
+    </plurals>
+    <string name="no_channels">Kanal yok</string>
+    <string name="no_favorites">Henüz favori yok.\nEklemek için kanalda OK tuşuna basılı tutun.</string>
+    <string name="error_name">Bir ad girin</string>
+    <string name="error_source">Bir adres girin ya da dosya seçin</string>
+    <string name="error_download">Playlist yüklenemedi: %1$s</string>
+    <string name="error_empty">Playlistte kanal bulunamadı</string>
+    <string name="error_stream">Yayın açılamadı</string>
+    <string name="retrying">Yeniden bağlanıyor…</string>
+    <string name="added_fav">Favorilere eklendi</string>
+    <string name="removed_fav">Favorilerden çıkarıldı</string>
+    <string name="delete_confirm">\"%1$s\" silinsin mi?</string>
+    <string name="language">Dil</string>
+    <string name="channel_keys">Tam ekranda kanal değiştirme</string>
+    <string name="keys_normal">Yukarı = önceki, Aşağı = sonraki</string>
+    <string name="keys_inverted">Yukarı = sonraki, Aşağı = önceki</string>
+    <string name="hint_main">OK: oynat  ·  Tekrar OK / Geri: tam ekran  ·  OK basılı: favori  ·  0-9: kanal no</string>
+    <string name="file_selected">Dosya: %1$s</string>
+    <string name="playlist_info">%1$d kanal  ·  %2$s</string>
+    <string name="source_file">yerel dosya</string>
+    <string name="storage_permission">Dosyalara göz atmak için depolama izni gerekli</string>
+    <string name="no_files">Burada playlist dosyası yok</string>
+    <string name="no_storage">Depolama bulunamadı</string>
+    <string name="refreshed">Playlist güncellendi: %1$d kanal</string>
+    <string name="nothing_playing">Bir kanal seçin</string>
+    <string name="channel_not_found">%1$d numaralı kanal bulunamadı</string>
+</resources>
