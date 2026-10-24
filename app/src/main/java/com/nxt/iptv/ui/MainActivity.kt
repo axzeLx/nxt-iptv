@@ -45,8 +45,11 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
     private lateinit var content: View
     private lateinit var catList: RecyclerView
     private lateinit var chList: RecyclerView
-    private lateinit var chHeader: TextView
     private lateinit var chEmpty: TextView
+    private lateinit var catLeft: View
+    private lateinit var catRight: View
+    private lateinit var chUp: View
+    private lateinit var chDown: View
     private lateinit var previewSlot: View
     private lateinit var playerFrame: FrameLayout
     private lateinit var playerView: PlayerView
@@ -86,6 +89,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
     private var okLongFired = false
     private val digits = StringBuilder()
     private var rowHeightPx = 0
+    private var chipWidthPx = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,12 +99,16 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         player = PlayerHolder(this, this)
         ImageLoader.init(this)
         rowHeightPx = (37 * resources.displayMetrics.density).toInt()
+        chipWidthPx = (140 * resources.displayMetrics.density).toInt()
 
         root = findViewById(R.id.root)
         content = findViewById(R.id.content)
         catList = findViewById(R.id.catList)
         chList = findViewById(R.id.chList)
-        chHeader = findViewById(R.id.chHeader)
+        catLeft = findViewById(R.id.catLeft)
+        catRight = findViewById(R.id.catRight)
+        chUp = findViewById(R.id.chUp)
+        chDown = findViewById(R.id.chDown)
         chEmpty = findViewById(R.id.chEmpty)
         previewSlot = findViewById(R.id.previewSlot)
         playerFrame = findViewById(R.id.playerFrame)
@@ -136,8 +144,10 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
                 if (pos >= 0) toggleFavorite(channels[pos])
             },
         )
-        setupList(catList, catAdapter)
-        setupList(chList, chAdapter)
+        setupList(catList, catAdapter, RecyclerView.HORIZONTAL)
+        setupList(chList, chAdapter, RecyclerView.VERTICAL)
+        catLeft.setOnClickListener { moveCategory(-1) }
+        catRight.setOnClickListener { moveCategory(1) }
 
         previewSlot.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> playerFrame.post { positionPlayer() } }
         setupPlayerTouch()
@@ -253,7 +263,6 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         val d = data ?: return
         cats.clear()
         cats.add(CatItem(CatItem.FAV, KEY_FAV, getString(R.string.favorites), favorites.size))
-        cats.add(CatItem(CatItem.HEADER, "", getString(R.string.categories), 0))
         cats.add(CatItem(CatItem.CATEGORY, KEY_ALL, getString(R.string.all_channels), d.channels.size))
         for (g in d.groups) {
             cats.add(CatItem(CatItem.CATEGORY, g, groupLabel(g), d.byGroup[g]?.size ?: 0))
@@ -279,17 +288,16 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         catSel = index
         val item = cats[index]
         shownKey = item.key
-        showChannels(channelsFor(item.key), item.label)
+        showChannels(channelsFor(item.key))
         prefs.setLastCategory(pid, item.key)
         catAdapter.selected = index
         catAdapter.notifyDataSetChanged()
     }
 
-    private fun showChannels(list: List<Channel>, title: String) {
+    private fun showChannels(list: List<Channel>) {
         channels = list
         val playingUrl = playing?.url
         chSel = list.indexOfFirst { it.url == playingUrl }.coerceAtLeast(0)
-        chHeader.text = "$title  ·  ${resources.getQuantityString(R.plurals.channels_count, list.size, list.size)}"
         chEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
         chEmpty.setText(if (shownKey == KEY_FAV) R.string.no_favorites else R.string.no_channels)
         chAdapter.channels = list
@@ -298,13 +306,10 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         scrollTo(chList, chSel)
     }
 
+    /** Steps through the category bar, wrapping around at both ends. */
     private fun moveCategory(delta: Int) {
-        var i = catSel + delta
-        while (i in cats.indices && cats[i].type == CatItem.HEADER) i += delta
-        if (i !in cats.indices) {
-            if (delta < 0) setFocus(Focus.TOP)
-            return
-        }
+        if (cats.isEmpty()) return
+        val i = ((catSel + delta) % cats.size + cats.size) % cats.size
         selectCategory(i)
         scrollTo(catList, i)
     }
@@ -313,7 +318,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         if (channels.isEmpty()) return
         val target = chSel + delta
         if (target < 0) {
-            if (chSel == 0) setFocus(Focus.TOP) else setChannelSelection(0)
+            if (chSel == 0) setFocus(Focus.CATEGORIES) else setChannelSelection(0)
             return
         }
         setChannelSelection(target.coerceAtMost(channels.size - 1))
@@ -350,11 +355,26 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         }
     }
 
+    /** Scrolls so [position] sits near the middle of the list (vertical or horizontal). */
     private fun scrollTo(list: RecyclerView, position: Int) {
         if (position < 0) return
         val lm = list.layoutManager as LinearLayoutManager
-        val offset = if (list.height > 0) list.height / 2 - rowHeightPx / 2 else 0
+        val offset = if (lm.orientation == RecyclerView.HORIZONTAL) {
+            if (list.width > 0) list.width / 2 - chipWidthPx / 2 else 0
+        } else {
+            if (list.height > 0) list.height / 2 - rowHeightPx / 2 else 0
+        }
         lm.scrollToPositionWithOffset(position, offset)
+        list.post { updateScrollHints() }
+    }
+
+    /**
+     * Shows ▲ ▼ only when the channel list can scroll that way. The category ‹ › stay visible
+     * since the bar wraps around and they double as a "use Left/Right here" hint.
+     */
+    private fun updateScrollHints() {
+        chUp.visibility = if (chList.canScrollVertically(-1)) View.VISIBLE else View.INVISIBLE
+        chDown.visibility = if (chList.canScrollVertically(1)) View.VISIBLE else View.INVISIBLE
     }
 
     private fun activateChannel() {
@@ -407,7 +427,13 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         if (q.isEmpty()) return
         val results = d.channels.filter { normalize(it.name).contains(q) }
         shownKey = null
-        showChannels(results, getString(R.string.search_results, query.trim()))
+        showChannels(results)
+        Toast.makeText(
+            this,
+            getString(R.string.search_results, query.trim()) + "  ·  " +
+                resources.getQuantityString(R.plurals.channels_count, results.size, results.size),
+            Toast.LENGTH_SHORT,
+        ).show()
         focus = if (results.isEmpty()) Focus.CATEGORIES else Focus.CHANNELS
         chSel = 0
         chAdapter.selected = 0
@@ -510,16 +536,18 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
 
     private val hideOsd = Runnable { osd.visibility = View.GONE }
 
-    private fun metaText(ch: Channel): String =
+    private fun metaText(ch: Channel, withGroup: Boolean = true): String =
         // The playlist's quality tag stands in until the stream reports its real resolution.
-        listOf(groupLabel(ch.group), videoInfo.ifEmpty { ch.quality.orEmpty() }, statusInfo)
+        listOf(if (withGroup) groupLabel(ch.group) else "", videoInfo.ifEmpty { ch.quality.orEmpty() }, statusInfo)
             .filter { it.isNotEmpty() }.joinToString("  ·  ")
 
     private fun updateInfo() {
         val ch = playing ?: return showIdleInfo()
         findViewById<TextView>(R.id.infoNumber).text = ch.number.toString()
         findViewById<TextView>(R.id.infoName).text = ch.name
-        findViewById<TextView>(R.id.infoMeta).text = metaText(ch)
+        // Category sits on the right of the second line, so the left part skips it.
+        findViewById<TextView>(R.id.infoMeta).text = metaText(ch, withGroup = false)
+        findViewById<TextView>(R.id.infoCategory).text = groupLabel(ch.group)
         findViewById<View>(R.id.infoFav).visibility = if (ch.url in favorites) View.VISIBLE else View.GONE
         ImageLoader.load(ch.logo, findViewById<ImageView>(R.id.infoLogo), (56 * resources.displayMetrics.density).toInt())
         if (fullscreen && osd.visibility == View.VISIBLE) {
@@ -531,6 +559,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         findViewById<TextView>(R.id.infoNumber).text = ""
         findViewById<TextView>(R.id.infoName).setText(R.string.nothing_playing)
         findViewById<TextView>(R.id.infoMeta).text = ""
+        findViewById<TextView>(R.id.infoCategory).text = ""
         findViewById<View>(R.id.infoFav).visibility = View.GONE
         findViewById<ImageView>(R.id.infoLogo).setImageDrawable(null)
     }
@@ -577,7 +606,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         Toast.makeText(this, if (added) R.string.added_fav else R.string.removed_fav, Toast.LENGTH_SHORT).show()
         if (shownKey == KEY_FAV) {
             val keep = chSel
-            showChannels(channelsFor(KEY_FAV), cats[catSel].label)
+            showChannels(channelsFor(KEY_FAV))
             if (channels.isNotEmpty()) setChannelSelection(keep.coerceAtMost(channels.size - 1))
             else if (focus == Focus.CHANNELS) focus = Focus.CATEGORIES
         }
@@ -702,12 +731,12 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
                 else -> return false
             }
             Focus.CATEGORIES -> when (code) {
-                KeyEvent.KEYCODE_DPAD_UP -> moveCategory(-1)
-                KeyEvent.KEYCODE_DPAD_DOWN -> moveCategory(1)
-                KeyEvent.KEYCODE_PAGE_UP -> repeat(10) { moveCategory(-1) }
-                KeyEvent.KEYCODE_PAGE_DOWN -> repeat(10) { moveCategory(1) }
-                KeyEvent.KEYCODE_DPAD_RIGHT -> setFocus(Focus.CHANNELS)
-                KeyEvent.KEYCODE_DPAD_LEFT -> Unit
+                KeyEvent.KEYCODE_DPAD_LEFT -> moveCategory(-1)
+                KeyEvent.KEYCODE_DPAD_RIGHT -> moveCategory(1)
+                KeyEvent.KEYCODE_PAGE_UP -> repeat(5) { moveCategory(-1) }
+                KeyEvent.KEYCODE_PAGE_DOWN -> repeat(5) { moveCategory(1) }
+                KeyEvent.KEYCODE_DPAD_DOWN -> setFocus(Focus.CHANNELS)
+                KeyEvent.KEYCODE_DPAD_UP -> setFocus(Focus.TOP)
                 KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> finish()
                 else -> return false
             }
@@ -716,11 +745,13 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
                 KeyEvent.KEYCODE_DPAD_DOWN -> moveChannel(step)
                 KeyEvent.KEYCODE_PAGE_UP -> moveChannel(-10)
                 KeyEvent.KEYCODE_PAGE_DOWN -> moveChannel(10)
-                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
+                // Left/Right flip categories without leaving the channel list.
+                KeyEvent.KEYCODE_DPAD_LEFT -> moveCategory(-1)
+                KeyEvent.KEYCODE_DPAD_RIGHT -> moveCategory(1)
+                KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
                     if (shownKey == null) selectCategory(catSel) // leave search results
                     focus = Focus.CATEGORIES
                 }
-                KeyEvent.KEYCODE_DPAD_RIGHT -> Unit
                 else -> return false
             }
         }
@@ -801,13 +832,16 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         clockTick.run()
     }
 
-    private fun setupList(list: RecyclerView, adapter: RecyclerView.Adapter<*>) {
-        list.layoutManager = LinearLayoutManager(this)
+    private fun setupList(list: RecyclerView, adapter: RecyclerView.Adapter<*>, orientation: Int) {
+        list.layoutManager = LinearLayoutManager(this, orientation, false)
         list.adapter = adapter
         list.itemAnimator = null
         list.setHasFixedSize(true)
         list.isFocusable = false
         list.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        list.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(rv: RecyclerView, dx: Int, dy: Int) = updateScrollHints()
+        })
     }
 
     companion object {

@@ -5,18 +5,8 @@
     android:layout_marginBottom="1dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="6dp"
-    android:paddingEnd="10dp">
-
-    <TextView
-        android:id="@+id/number"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="10dp"
-        android:gravity="end"
-        android:minWidth="24dp"
-        android:textColor="@color/text_dim"
-        android:textSize="13sp" />
+    android:paddingStart="10dp"
+    android:paddingEnd="8dp">
 
     <ImageView
         android:id="@+id/logo"
@@ -54,4 +44,15 @@
         android:textColor="@color/accent"
         android:textSize="15sp"
         android:visibility="gone" />
+
+    <!-- Channel number on the right edge, next to the preview -->
+    <TextView
+        android:id="@+id/number"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:gravity="end"
+        android:minWidth="30dp"
+        android:textColor="@color/text_dim"
+        android:textSize="13sp" />
 </LinearLayout>

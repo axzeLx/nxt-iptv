@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="34dp"
-    android:layout_marginBottom="1dp"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:layout_marginEnd="4dp"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="14dp"
-    android:paddingEnd="12dp">
+    android:paddingEnd="14dp">
 
     <TextView
         android:id="@+id/label"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:ellipsize="end"
         android:singleLine="true"
         android:textColor="@color/text"
-        android:textSize="17sp" />
+        android:textSize="16sp" />
 
     <TextView
         android:id="@+id/count"
@@ -24,5 +22,5 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:textColor="@color/text_dim"
-        android:textSize="13sp" />
+        android:textSize="12sp" />
 </LinearLayout>
