@@ -40,6 +40,15 @@
                 android:textSize="15sp" />
 
             <TextView
+                android:id="@+id/clock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="18dp"
+                android:textColor="@color/text"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:id="@+id/btnSearch"
                 style="@style/TopButton"
                 android:text="@string/search" />
@@ -55,13 +64,9 @@
                 android:text="@string/settings" />
 
             <TextView
-                android:id="@+id/clock"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="18dp"
-                android:textColor="@color/text"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:id="@+id/btnExit"
+                style="@style/TopButton"
+                android:text="@string/exit" />
         </LinearLayout>
 
         <!-- Favorites + categories, moved through with Left/Right -->

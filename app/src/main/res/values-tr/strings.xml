@@ -52,6 +52,11 @@
     <string name="storage_permission">Dosyalara göz atmak için depolama izni gerekli</string>
     <string name="no_files">Burada playlist dosyası yok</string>
     <string name="no_storage">Depolama bulunamadı</string>
+    <string name="exit">Çıkış</string>
+    <string name="exit_confirm">NXT IPTV kapatılsın mı?</string>
+    <string name="choose_storage">Disk seçin</string>
+    <string name="internal_storage">Dahili depolama</string>
+    <string name="cannot_read_folder">Bu klasör okunamıyor</string>
     <string name="refreshed">Playlist güncellendi: %1$d kanal</string>
     <string name="nothing_playing">Bir kanal seçin</string>
     <string name="channel_not_found">%1$d numaralı kanal bulunamadı</string>

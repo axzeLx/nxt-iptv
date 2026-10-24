@@ -80,7 +80,7 @@ class AddPlaylistActivity : BaseActivity() {
     }
 
     private fun browseStorage() {
-        if (Build.VERSION.SDK_INT in 23..32 &&
+        if (Build.VERSION.SDK_INT >= 23 &&
             checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissions(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE), REQ_PERMISSION)

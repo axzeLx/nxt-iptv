@@ -53,6 +53,11 @@
     <string name="storage_permission">Storage permission is required to browse files</string>
     <string name="no_files">No playlist files here</string>
     <string name="no_storage">No storage found</string>
+    <string name="exit">Exit</string>
+    <string name="exit_confirm">Exit NXT IPTV?</string>
+    <string name="choose_storage">Choose a drive</string>
+    <string name="internal_storage">Internal storage</string>
+    <string name="cannot_read_folder">This folder cannot be read</string>
     <string name="refreshed">Playlist updated: %1$d channels</string>
     <string name="nothing_playing">Select a channel</string>
     <string name="channel_not_found">Channel %1$d not found</string>

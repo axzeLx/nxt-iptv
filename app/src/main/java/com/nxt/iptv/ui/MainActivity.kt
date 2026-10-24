@@ -87,6 +87,8 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
 
     private var okDown = false
     private var okLongFired = false
+    private var backDown = false
+    private var backLongFired = false
     private val digits = StringBuilder()
     private var rowHeightPx = 0
     private var chipWidthPx = 0
@@ -119,7 +121,10 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         loading = findViewById(R.id.loading)
         clock = findViewById(R.id.clock)
         findViewById<TextView>(R.id.brand).text = brandTitle(this)
-        topButtons = listOf(findViewById(R.id.btnSearch), findViewById(R.id.btnPlaylists), findViewById(R.id.btnSettings))
+        topButtons = listOf(
+            findViewById(R.id.btnSearch), findViewById(R.id.btnPlaylists),
+            findViewById(R.id.btnSettings), findViewById(R.id.btnExit),
+        )
         topButtons.forEachIndexed { i, b ->
             b.setOnClickListener { topAction(i) }
             // Clickable views become focusable on API 26+; selection here is painted by refreshFocus().
@@ -392,7 +397,17 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
             0 -> showSearch()
             1 -> finish()
             2 -> SettingsDialog.show(this)
+            3 -> finishAffinity() // explicit Exit button: no confirmation
         }
+    }
+
+    /** Holding Back asks first, since it is easy to trigger by accident. */
+    private fun confirmExit() {
+        AlertDialog.Builder(this)
+            .setMessage(R.string.exit_confirm)
+            .setPositiveButton(R.string.exit) { _, _ -> finishAffinity() }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun showSearch() {
@@ -672,6 +687,23 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
             }
             return true
         }
+        if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) {
+            // Short press acts on release; holding Back offers to close the app.
+            when (event.action) {
+                KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
+                    backDown = true
+                    backLongFired = false
+                } else if (backDown && !backLongFired) {
+                    backLongFired = true
+                    confirmExit()
+                }
+                KeyEvent.ACTION_UP -> {
+                    if (backDown && !backLongFired) onBack()
+                    backDown = false
+                }
+            }
+            return true
+        }
         if (event.action != KeyEvent.ACTION_DOWN) {
             return if (handles(code)) true else super.dispatchKeyEvent(event)
         }
@@ -709,24 +741,35 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
             KeyEvent.KEYCODE_DPAD_UP -> zap(up)
             KeyEvent.KEYCODE_DPAD_DOWN -> zap(-up)
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_INFO -> showOsd()
-            KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> exitFullscreen()
             else -> return false
         }
         return true
     }
 
-    private fun browseKey(code: Int, step: Int): Boolean {
-        // While something is playing, Back just hides the lists and returns to the picture.
-        if ((code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_ESCAPE) && playing != null) {
-            if (focus == Focus.TOP) focus = focusBeforeTop
-            enterFullscreen()
-            return true
+    /** Short Back: fullscreen -> lists, lists -> back to the picture. */
+    private fun onBack() {
+        when {
+            fullscreen -> exitFullscreen()
+            playing != null -> {
+                if (focus == Focus.TOP) focus = focusBeforeTop
+                enterFullscreen()
+            }
+            // Nothing playing yet: step out of the channel list, then back to the playlists screen.
+            focus == Focus.CHANNELS -> {
+                if (shownKey == null) selectCategory(catSel) // leave search results
+                focus = Focus.CATEGORIES
+                refreshFocus()
+            }
+            else -> finish()
         }
+    }
+
+    private fun browseKey(code: Int, step: Int): Boolean {
         when (focus) {
             Focus.TOP -> when (code) {
                 KeyEvent.KEYCODE_DPAD_LEFT -> topSel = (topSel - 1).coerceAtLeast(0)
                 KeyEvent.KEYCODE_DPAD_RIGHT -> topSel = (topSel + 1).coerceAtMost(topButtons.size - 1)
-                KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> focus = focusBeforeTop
+                KeyEvent.KEYCODE_DPAD_DOWN -> focus = focusBeforeTop
                 KeyEvent.KEYCODE_DPAD_UP -> Unit
                 else -> return false
             }
@@ -737,7 +780,6 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
                 KeyEvent.KEYCODE_PAGE_DOWN -> repeat(5) { moveCategory(1) }
                 KeyEvent.KEYCODE_DPAD_DOWN -> setFocus(Focus.CHANNELS)
                 KeyEvent.KEYCODE_DPAD_UP -> setFocus(Focus.TOP)
-                KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> finish()
                 else -> return false
             }
             Focus.CHANNELS -> when (code) {
@@ -748,10 +790,6 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
                 // Left/Right flip categories without leaving the channel list.
                 KeyEvent.KEYCODE_DPAD_LEFT -> moveCategory(-1)
                 KeyEvent.KEYCODE_DPAD_RIGHT -> moveCategory(1)
-                KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
-                    if (shownKey == null) selectCategory(catSel) // leave search results
-                    focus = Focus.CATEGORIES
-                }
                 else -> return false
             }
         }

@@ -11,9 +11,10 @@ android {
     defaultConfig {
         applicationId = "com.nxt.iptv"
         minSdk = 21
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        // 29 keeps legacy (non-scoped) storage, so playlists can be read straight off USB drives on TVs.
+        targetSdk = 29
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     buildTypes {
@@ -35,6 +36,10 @@ android {
     }
     buildFeatures {
         buildConfig = false
+    }
+    lint {
+        // Sideloaded TV app: the old targetSdk is deliberate (see defaultConfig).
+        disable += setOf("ExpiredTargetSdkVersion", "OldTargetApi")
     }
 }
 
