@@ -31,6 +31,8 @@ class PlayerHolder(private val context: Context, private val listener: Listener)
         fun onRetrying()
         fun onFailed(message: String)
         fun onVideoSize(width: Int, height: Int)
+        /** Actually playing (not buffering/stopped); drives keep-screen-on. */
+        fun onIsPlaying(playing: Boolean)
     }
 
     private val handler = Handler(Looper.getMainLooper())
@@ -54,6 +56,8 @@ class PlayerHolder(private val context: Context, private val listener: Listener)
                 Player.STATE_IDLE -> Unit
             }
         }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) = listener.onIsPlaying(isPlaying)
 
         override fun onVideoSizeChanged(videoSize: VideoSize) {
             if (videoSize.width > 0) listener.onVideoSize(videoSize.width, videoSize.height)

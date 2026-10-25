@@ -59,6 +59,13 @@
     <string name="high_contrast_changed">Text contrast setting changed</string>
     <string name="high_contrast_manual">Find \"High contrast text\" on this screen and switch it off</string>
     <string name="high_contrast_unavailable">This TV does not allow changing this setting</string>
+    <string name="idle_check">Ask \"still watching?\"</string>
+    <string name="idle_after_hours">after %1$d h without a key press</string>
+    <string name="still_watching_title">Still watching?</string>
+    <string name="still_watching_msg">No button has been pressed for a long time. Playback will stop in %1$d s.</string>
+    <string name="keep_watching">Keep watching</string>
+    <string name="stop">Stop</string>
+    <string name="stopped_idle">Stopped because there was no activity.\nPress OK to continue.</string>
     <string name="exit">Exit</string>
     <string name="exit_confirm">Exit NXT IPTV?</string>
     <string name="choose_storage">Choose a drive</string>

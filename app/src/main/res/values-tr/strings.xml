@@ -58,6 +58,13 @@
     <string name="high_contrast_changed">Yazı kontrast ayarı değiştirildi</string>
     <string name="high_contrast_manual">Bu ekranda \"Yüksek kontrastlı metin\" seçeneğini bulup kapatın</string>
     <string name="high_contrast_unavailable">Bu TV bu ayarın değiştirilmesine izin vermiyor</string>
+    <string name="idle_check">\"Hâlâ izliyor musunuz?\" sorusu</string>
+    <string name="idle_after_hours">%1$d saat tuşa basılmazsa</string>
+    <string name="still_watching_title">Hâlâ izliyor musunuz?</string>
+    <string name="still_watching_msg">Uzun süredir hiçbir tuşa basılmadı. Yayın %1$d sn sonra durdurulacak.</string>
+    <string name="keep_watching">İzlemeye devam</string>
+    <string name="stop">Durdur</string>
+    <string name="stopped_idle">Hareket olmadığı için durduruldu.\nDevam etmek için OK\'e basın.</string>
     <string name="exit">Çıkış</string>
     <string name="exit_confirm">NXT IPTV kapatılsın mı?</string>
     <string name="choose_storage">Disk seçin</string>

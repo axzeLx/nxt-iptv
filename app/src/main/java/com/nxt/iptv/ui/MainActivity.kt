@@ -6,12 +6,14 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.text.format.DateFormat
 import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -90,6 +92,9 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
     private var okLongFired = false
     private var backDown = false
     private var backLongFired = false
+    private var lastInputAt = 0L
+    private var idleDialog: AlertDialog? = null
+    private var stoppedForIdle = false
     private val digits = StringBuilder()
     private var rowHeightPx = 0
     private var chipWidthPx = 0
@@ -181,8 +186,11 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
     override fun onStart() {
         super.onStart()
         player.attach(playerView)
-        playing?.let { player.play(it) }
+        if (!stoppedForIdle) playing?.let { player.play(it) }
         tickClock()
+        lastInputAt = SystemClock.elapsedRealtime()
+        handler.removeCallbacks(idleCheck)
+        handler.postDelayed(idleCheck, IDLE_CHECK_MS)
     }
 
     override fun onResume() {
@@ -193,7 +201,77 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
     override fun onStop() {
         super.onStop()
         handler.removeCallbacks(clockTick)
+        handler.removeCallbacks(idleCheck)
+        idleDialog?.dismiss()
         player.release()
+    }
+
+    // ---------------------------------------------------------------- inactivity
+
+    /**
+     * Playback keeps the screen on, so someone who falls asleep would leave the TV running all night.
+     * After [Prefs.idleHours] without any remote input we ask, and stop if nobody answers.
+     */
+    private val idleCheck = object : Runnable {
+        override fun run() {
+            val limit = prefs.idleHours * 3_600_000L
+            if (limit > 0 && playing != null && !stoppedForIdle && idleDialog == null &&
+                SystemClock.elapsedRealtime() - lastInputAt > limit
+            ) {
+                showIdleDialog()
+            }
+            handler.postDelayed(this, IDLE_CHECK_MS)
+        }
+    }
+
+    private fun showIdleDialog() {
+        var secondsLeft = IDLE_COUNTDOWN_S
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.still_watching_title)
+            .setMessage(getString(R.string.still_watching_msg, secondsLeft))
+            .setPositiveButton(R.string.keep_watching) { _, _ -> lastInputAt = SystemClock.elapsedRealtime() }
+            .setNegativeButton(R.string.stop) { _, _ -> stopForIdle() }
+            .create()
+        val tick = object : Runnable {
+            override fun run() {
+                secondsLeft--
+                if (secondsLeft <= 0) {
+                    dialog.dismiss()
+                    stopForIdle()
+                } else {
+                    dialog.setMessage(getString(R.string.still_watching_msg, secondsLeft))
+                    handler.postDelayed(this, 1_000)
+                }
+            }
+        }
+        dialog.setOnDismissListener {
+            handler.removeCallbacks(tick)
+            idleDialog = null
+            // Dismissed with Back: someone is clearly there.
+            if (!stoppedForIdle) lastInputAt = SystemClock.elapsedRealtime()
+        }
+        idleDialog = dialog
+        dialog.show()
+        handler.postDelayed(tick, 1_000)
+    }
+
+    private fun stopForIdle() {
+        stoppedForIdle = true
+        player.stop()
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        playerMsg.setText(R.string.stopped_idle)
+        playerMsg.visibility = View.VISIBLE
+    }
+
+    private fun resumeAfterIdle() {
+        stoppedForIdle = false
+        playerMsg.visibility = View.GONE
+        player.replay()
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        lastInputAt = SystemClock.elapsedRealtime()
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -504,6 +582,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         val ch = list.getOrNull(index) ?: return
         playingList = list
         playingIndex = index
+        stoppedForIdle = false
         videoInfo = ""
         statusInfo = ""
         playerMsg.visibility = View.GONE
@@ -640,6 +719,12 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         updateInfo()
     }
 
+    override fun onIsPlaying(playing: Boolean) {
+        // Keep the TV from dimming or starting its screensaver while a stream is actually playing.
+        if (playing) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
     override fun onVideoSize(width: Int, height: Int) {
         videoInfo = when {
             height >= 2000 -> "4K"
@@ -709,7 +794,12 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         if (data == null) {
             return if (event.keyCode == KeyEvent.KEYCODE_BACK) super.dispatchKeyEvent(event) else true
         }
+        lastInputAt = SystemClock.elapsedRealtime()
         val code = event.keyCode
+        if (stoppedForIdle && isOk(code)) {
+            if (event.action == KeyEvent.ACTION_UP) resumeAfterIdle()
+            return true
+        }
         if (isOk(code)) {
             when (event.action) {
                 KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0) {
@@ -923,6 +1013,8 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
 
     companion object {
         const val EXTRA_PLAYLIST = "playlist"
+        private const val IDLE_CHECK_MS = 60_000L
+        private const val IDLE_COUNTDOWN_S = 60
         private const val KEY_FAV = "\u0001fav"
         private const val KEY_ALL = "\u0001all"
         private val HANDLED_KEYS = setOf(

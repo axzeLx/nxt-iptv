@@ -15,6 +15,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("invert_keys", false)
         set(v) = sp.edit().putBoolean("invert_keys", v).apply()
 
+    /** Hours without any remote input before asking "still watching?"; 0 = never ask. */
+    var idleHours: Int
+        get() = sp.getInt("idle_hours", 3)
+        set(v) = sp.edit().putInt("idle_hours", v).apply()
+
     var lastPlaylist: String?
         get() = sp.getString("last_playlist", null)
         set(v) = sp.edit().putString("last_playlist", v).apply()

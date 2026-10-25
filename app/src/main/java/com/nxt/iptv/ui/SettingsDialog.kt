@@ -33,6 +33,7 @@ object SettingsDialog {
         val items = arrayOf(
             "${activity.getString(R.string.language)}:  $langLabel",
             "${activity.getString(R.string.channel_keys)}:  $keysLabel",
+            "${activity.getString(R.string.idle_check)}:  ${idleLabel(activity, prefs.idleHours)}",
             "${activity.getString(R.string.high_contrast)}:  $contrastLabel",
         )
         AlertDialog.Builder(activity)
@@ -44,8 +45,26 @@ object SettingsDialog {
                         prefs.invertChannelKeys = !prefs.invertChannelKeys
                         show(activity)
                     }
-                    2 -> toggleHighContrast(activity)
+                    2 -> chooseIdleHours(activity, prefs)
+                    3 -> toggleHighContrast(activity)
                 }
+            }
+            .show()
+    }
+
+    private val idleChoices = intArrayOf(1, 2, 3, 4, 0)
+
+    private fun idleLabel(activity: Activity, hours: Int) =
+        if (hours == 0) activity.getString(R.string.off) else activity.getString(R.string.idle_after_hours, hours)
+
+    private fun chooseIdleHours(activity: Activity, prefs: Prefs) {
+        val current = idleChoices.indexOf(prefs.idleHours).coerceAtLeast(0)
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.idle_check)
+            .setSingleChoiceItems(idleChoices.map { idleLabel(activity, it) }.toTypedArray(), current) { dialog, which ->
+                dialog.dismiss()
+                prefs.idleHours = idleChoices[which]
+                show(activity)
             }
             .show()
     }
