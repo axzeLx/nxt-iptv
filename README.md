@@ -3,6 +3,12 @@
 Simple, fast IPTV player for Android TV and phones, built for remote-control use.
 *Android TV ve telefonlar için kumandayla kullanıma göre tasarlanmış, sade ve hızlı bir IPTV oynatıcı.*
 
+![Main screen: category bar, channel list and live preview](docs/screenshots/main.jpg)
+
+| All categories (OK on the category bar) | Add a playlist from a URL or a file |
+|---|---|
+| ![Category list](docs/screenshots/categories.jpg) | ![Add playlist](docs/screenshots/add.jpg) |
+
 ## Features / Özellikler
 
 - M3U / M3U8 playlists from a URL or a file (including USB drives); multiple playlists, last one remembered
