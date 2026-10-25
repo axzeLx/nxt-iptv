@@ -52,6 +52,12 @@
     <string name="storage_permission">Dosyalara göz atmak için depolama izni gerekli</string>
     <string name="no_files">Burada playlist dosyası yok</string>
     <string name="no_storage">Depolama bulunamadı</string>
+    <string name="high_contrast">Yüksek kontrastlı metin (sistem)</string>
+    <string name="on">Açık</string>
+    <string name="off">Kapalı</string>
+    <string name="high_contrast_changed">Yazı kontrast ayarı değiştirildi</string>
+    <string name="high_contrast_manual">Bu ekranda \"Yüksek kontrastlı metin\" seçeneğini bulup kapatın</string>
+    <string name="high_contrast_unavailable">Bu TV bu ayarın değiştirilmesine izin vermiyor</string>
     <string name="exit">Çıkış</string>
     <string name="exit_confirm">NXT IPTV kapatılsın mı?</string>
     <string name="choose_storage">Disk seçin</string>

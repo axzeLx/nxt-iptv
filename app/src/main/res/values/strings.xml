@@ -53,6 +53,12 @@
     <string name="storage_permission">Storage permission is required to browse files</string>
     <string name="no_files">No playlist files here</string>
     <string name="no_storage">No storage found</string>
+    <string name="high_contrast">High contrast text (system)</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="high_contrast_changed">Text contrast setting changed</string>
+    <string name="high_contrast_manual">Find \"High contrast text\" on this screen and switch it off</string>
+    <string name="high_contrast_unavailable">This TV does not allow changing this setting</string>
     <string name="exit">Exit</string>
     <string name="exit_confirm">Exit NXT IPTV?</string>
     <string name="choose_storage">Choose a drive</string>
