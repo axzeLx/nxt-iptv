@@ -88,6 +88,8 @@ class ChannelAdapter(
     var channels: List<Channel> = emptyList()
     var favorites: Set<String> = emptySet()
     var playingUrl: String? = null
+    /** When set (recently watched list), shown in place of the channel number, e.g. "21:45". */
+    var rightLabel: ((Channel) -> String)? = null
     var selected = 0
     var active = false
 
@@ -106,7 +108,7 @@ class ChannelAdapter(
         val playing = v.findViewById<TextView>(R.id.playing)
         val fav = v.findViewById<TextView>(R.id.fav)
         name.text = ch.name
-        number.text = ch.number.toString()
+        number.text = rightLabel?.invoke(ch) ?: ch.number.toString()
         ImageLoader.load(ch.logo, v.findViewById<ImageView>(R.id.logo), logoSizePx)
         val isSelected = position == selected
         paintRow(v, isSelected, active, android.R.color.transparent, name, number)

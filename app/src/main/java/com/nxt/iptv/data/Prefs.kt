@@ -2,6 +2,7 @@ package com.nxt.iptv.data
 
 import android.content.Context
 import org.json.JSONArray
+import org.json.JSONObject
 
 class Prefs(context: Context) {
     private val sp = context.applicationContext.getSharedPreferences("nxt", Context.MODE_PRIVATE)
@@ -19,6 +20,26 @@ class Prefs(context: Context) {
     var idleHours: Int
         get() = sp.getInt("idle_hours", 3)
         set(v) = sp.edit().putInt("idle_hours", v).apply()
+
+    /** Show the "Recently watched" category and record into it. */
+    var historyEnabled: Boolean
+        get() = sp.getBoolean("hist_on", true)
+        set(v) = sp.edit().putBoolean("hist_on", v).apply()
+
+    /** How many recently watched channels to list. */
+    var historySize: Int
+        get() = sp.getInt("hist_size", 12)
+        set(v) = sp.edit().putInt("hist_size", v).apply()
+
+    /** A channel must stay on this long to count as watched (skips quick zapping). */
+    var historyMinSeconds: Int
+        get() = sp.getInt("hist_min_s", 10)
+        set(v) = sp.edit().putInt("hist_min_s", v).apply()
+
+    /** In fullscreen, Left jumps between the current and the previous channel. */
+    var leftKeyPrevious: Boolean
+        get() = sp.getBoolean("left_prev", true)
+        set(v) = sp.edit().putBoolean("left_prev", v).apply()
 
     var lastPlaylist: String?
         get() = sp.getString("last_playlist", null)
@@ -48,6 +69,32 @@ class Prefs(context: Context) {
     fun setFavorites(pid: String, urls: Collection<String>) =
         sp.edit().putString("fav_$pid", JSONArray(urls).toString()).apply()
 
+    /** Recently watched channel URLs with the time they were last watched, newest first. */
+    fun history(pid: String): List<Pair<String, Long>> {
+        val arr = JSONArray(sp.getString("hist_$pid", "[]"))
+        return (0 until arr.length()).map { arr.getJSONObject(it) }.map { it.getString("u") to it.getLong("t") }
+    }
+
+    fun addHistory(pid: String, url: String, time: Long) {
+        val list = listOf(url to time) + history(pid).filter { it.first != url }
+        sp.edit().putString(
+            "hist_$pid",
+            JSONArray(list.take(MAX_HISTORY).map { JSONObject().put("u", it.first).put("t", it.second) }).toString(),
+        ).apply()
+    }
+
+    fun clearAllHistory() {
+        val edit = sp.edit()
+        sp.all.keys.filter { it.startsWith("hist_") && it != "hist_on" && it != "hist_size" && it != "hist_min_s" }
+            .forEach { edit.remove(it) }
+        edit.apply()
+    }
+
     fun clearPlaylist(pid: String) =
-        sp.edit().remove("cat_$pid").remove("ch_$pid").remove("fav_$pid").apply()
+        sp.edit().remove("cat_$pid").remove("ch_$pid").remove("fav_$pid").remove("hist_$pid").apply()
+
+    companion object {
+        /** Stored entries; the visible count ([historySize]) can be at most this. */
+        const val MAX_HISTORY = 30
+    }
 }

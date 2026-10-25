@@ -30,6 +30,7 @@ import com.nxt.iptv.data.PlaylistData
 import com.nxt.iptv.data.PlaylistRepository
 import com.nxt.iptv.data.Prefs
 import com.nxt.iptv.player.PlayerHolder
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
@@ -178,6 +179,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
             if (fullscreen) exitFullscreen()
             player.stop()
             playingList = emptyList()
+            prevList = null
             playingIndex = -1
             loadPlaylist()
         }
@@ -347,6 +349,9 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         val d = data ?: return
         cats.clear()
         cats.add(CatItem(CatItem.FAV, KEY_FAV, getString(R.string.favorites), favorites.size))
+        if (prefs.historyEnabled) {
+            cats.add(CatItem(CatItem.CATEGORY, KEY_RECENT, "🕘  " + getString(R.string.recent), recentChannels().size))
+        }
         cats.add(CatItem(CatItem.CATEGORY, KEY_ALL, getString(R.string.all_channels), d.channels.size))
         for (g in d.groups) {
             cats.add(CatItem(CatItem.CATEGORY, g, groupLabel(g), d.byGroup[g]?.size ?: 0))
@@ -360,9 +365,74 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         val d = data ?: return emptyList()
         return when (key) {
             KEY_FAV -> favorites.mapNotNull { byUrl[it] }
+            KEY_RECENT -> recentChannels()
             KEY_ALL -> d.channels
             else -> d.byGroup[key].orEmpty()
         }
+    }
+
+    // ---------------------------------------------------------------- recently watched / previous channel
+
+    /** url -> when it was last watched, refreshed by [recentChannels]. */
+    private var recentTimes: Map<String, Long> = emptyMap()
+
+    private fun recentChannels(): List<Channel> {
+        val entries = prefs.history(pid).filter { byUrl.containsKey(it.first) }.take(prefs.historySize)
+        recentTimes = entries.toMap()
+        return entries.mapNotNull { byUrl[it.first] }
+    }
+
+    /** "21:45", "Yesterday 19:10" or "23.10 19:10". */
+    private fun formatWatched(time: Long?): String {
+        if (time == null) return ""
+        val clock = DateFormat.getTimeFormat(this).format(Date(time))
+        val then = Calendar.getInstance().apply { timeInMillis = time }
+        val today = Calendar.getInstance()
+        fun sameDay(a: Calendar, b: Calendar) =
+            a.get(Calendar.YEAR) == b.get(Calendar.YEAR) && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR)
+        if (sameDay(then, today)) return clock
+        today.add(Calendar.DAY_OF_YEAR, -1)
+        if (sameDay(then, today)) return getString(R.string.yesterday) + " " + clock
+        return DateFormat.format("dd.MM", then).toString() + " " + clock
+    }
+
+    private var playStartedAt = 0L
+    private var prevList: List<Channel>? = null
+    private var prevIndex = -1
+
+    /** Records the channel once it has stayed on for the configured time, so quick zapping is skipped. */
+    private val recordWatched = Runnable {
+        val ch = playing ?: return@Runnable
+        if (!prefs.historyEnabled) return@Runnable
+        prefs.addHistory(pid, ch.url, System.currentTimeMillis())
+        cats.firstOrNull { it.key == KEY_RECENT }?.count = recentChannels().size
+        if (shownKey == KEY_RECENT) {
+            showChannels(channelsFor(KEY_RECENT))
+        }
+        catAdapter.notifyDataSetChanged()
+    }
+
+    /** History settings may add/remove the Recent category or clear it; rebuild and keep our place. */
+    private fun onSettingsChanged() {
+        if (data == null) return
+        val key = shownKey
+        buildCategories()
+        val index = cats.indexOfFirst { it.key == key }.takeIf { it >= 0 } ?: cats.indexOfFirst { it.key == KEY_ALL }
+        if (key != null || index != catSel) selectCategory(index)
+        scrollTo(catList, catSel)
+    }
+
+    /** Left in fullscreen: jump between the current and the previous channel. */
+    private fun togglePrevious(): Boolean {
+        val list = prevList ?: return false
+        if (prevIndex !in list.indices) return false
+        playAt(list, prevIndex, viaToggle = true)
+        if (playingList === channels) {
+            chSel = playingIndex
+            chAdapter.selected = chSel
+            scrollTo(chList, chSel)
+        }
+        return true
     }
 
     // ---------------------------------------------------------------- browsing
@@ -386,6 +456,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         chEmpty.visibility = if (list.isEmpty()) View.VISIBLE else View.GONE
         chEmpty.setText(if (shownKey == KEY_FAV) R.string.no_favorites else R.string.no_channels)
         chAdapter.channels = list
+        chAdapter.rightLabel = if (shownKey == KEY_RECENT) { ch -> formatWatched(recentTimes[ch.url]) } else null
         chAdapter.selected = chSel
         chAdapter.notifyDataSetChanged()
         scrollTo(chList, chSel)
@@ -440,19 +511,30 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         if (channels.isEmpty()) return
         val target = chSel + delta
         if (target < 0) {
-            if (chSel == 0) setFocus(Focus.CATEGORIES) else setChannelSelection(0)
+            if (chSel == 0) setFocus(Focus.CATEGORIES) else setChannelSelection(0, -1)
             return
         }
-        setChannelSelection(target.coerceAtMost(channels.size - 1))
+        setChannelSelection(target.coerceAtMost(channels.size - 1), delta)
     }
 
-    private fun setChannelSelection(index: Int) {
+    /**
+     * [direction] != 0: the highlight walks down/up the visible rows and the list only scrolls once it
+     * reaches the second-to-last row, keeping the next channel visible (same feel as the category bar).
+     * [direction] == 0 (jumps): center the row.
+     */
+    private fun setChannelSelection(index: Int, direction: Int = 0) {
         val old = chSel
         chSel = index
         chAdapter.selected = index
         chAdapter.notifyItemChanged(old)
         chAdapter.notifyItemChanged(index)
-        scrollTo(chList, index)
+        if (direction == 0) {
+            scrollTo(chList, index)
+        } else {
+            val neighbor = (index + if (direction > 0) 1 else -1).coerceIn(0, channels.size - 1)
+            lm(chList).scrollToPosition(neighbor)
+            chList.post { updateScrollHints() }
+        }
     }
 
     private fun setFocus(f: Focus) {
@@ -513,7 +595,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         when (index) {
             0 -> showSearch()
             1 -> finish()
-            2 -> SettingsDialog.show(this)
+            2 -> SettingsDialog.show(this, ::onSettingsChanged)
             3 -> finishAffinity() // explicit Exit button: no confirmation
         }
     }
@@ -578,8 +660,18 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
 
     // ---------------------------------------------------------------- playback
 
-    private fun playAt(list: List<Channel>, index: Int) {
+    private fun playAt(list: List<Channel>, index: Int, viaToggle: Boolean = false) {
         val ch = list.getOrNull(index) ?: return
+        val current = playing
+        // Remember where we came from, unless it was only zapped past (a toggle always counts).
+        val watchedLongEnough = SystemClock.elapsedRealtime() - playStartedAt >= prefs.historyMinSeconds * 1000L
+        if (current != null && current.url != ch.url && (viaToggle || prevList == null || watchedLongEnough)) {
+            prevList = playingList
+            prevIndex = playingIndex
+        }
+        playStartedAt = SystemClock.elapsedRealtime()
+        handler.removeCallbacks(recordWatched)
+        handler.postDelayed(recordWatched, prefs.historyMinSeconds * 1000L)
         playingList = list
         playingIndex = index
         stoppedForIdle = false
@@ -852,7 +944,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         when (code) {
             KeyEvent.KEYCODE_CHANNEL_UP -> { zap(-1); return true }
             KeyEvent.KEYCODE_CHANNEL_DOWN -> { zap(1); return true }
-            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { SettingsDialog.show(this); return true }
+            KeyEvent.KEYCODE_MENU, KeyEvent.KEYCODE_SETTINGS -> { SettingsDialog.show(this, ::onSettingsChanged); return true }
             KeyEvent.KEYCODE_SEARCH -> { showSearch(); return true }
         }
         val handled = if (fullscreen) fullscreenKey(code) else browseKey(code, step)
@@ -869,7 +961,8 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         when (code) {
             KeyEvent.KEYCODE_DPAD_UP -> zap(up)
             KeyEvent.KEYCODE_DPAD_DOWN -> zap(-up)
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_INFO -> showOsd()
+            KeyEvent.KEYCODE_DPAD_LEFT -> if (!(prefs.leftKeyPrevious && togglePrevious())) showOsd()
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_INFO -> showOsd()
             else -> return false
         }
         return true
@@ -1017,6 +1110,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         private const val IDLE_COUNTDOWN_S = 60
         private const val KEY_FAV = "\u0001fav"
         private const val KEY_ALL = "\u0001all"
+        private const val KEY_RECENT = "\u0001recent"
         private val HANDLED_KEYS = setOf(
             KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN, KeyEvent.KEYCODE_DPAD_LEFT,
             KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE,

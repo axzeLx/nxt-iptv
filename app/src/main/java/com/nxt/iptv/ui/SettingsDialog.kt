@@ -25,14 +25,21 @@ object SettingsDialog {
         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS),
     )
 
-    fun show(activity: Activity) {
+    /** Screen to notify when a setting that affects it changes (only while that screen opened us). */
+    private var changeListener: Pair<Activity, () -> Unit>? = null
+
+    fun show(activity: Activity, onChange: (() -> Unit)? = null) {
+        if (onChange != null) changeListener = activity to onChange
+        else if (changeListener?.first !== activity) changeListener = null
         val prefs = Prefs(activity)
         val langLabel = languages.firstOrNull { it.first == prefs.language }?.second ?: "English"
         val keysLabel = activity.getString(if (prefs.invertChannelKeys) R.string.keys_inverted else R.string.keys_normal)
         val contrastLabel = activity.getString(if (isHighContrast(activity)) R.string.on else R.string.off)
+        val historyLabel = activity.getString(if (prefs.historyEnabled) R.string.on else R.string.off)
         val items = arrayOf(
             "${activity.getString(R.string.language)}:  $langLabel",
             "${activity.getString(R.string.channel_keys)}:  $keysLabel",
+            "${activity.getString(R.string.history_settings)}:  $historyLabel",
             "${activity.getString(R.string.idle_check)}:  ${idleLabel(activity, prefs.idleHours)}",
             "${activity.getString(R.string.high_contrast)}:  $contrastLabel",
         )
@@ -45,9 +52,80 @@ object SettingsDialog {
                         prefs.invertChannelKeys = !prefs.invertChannelKeys
                         show(activity)
                     }
-                    2 -> chooseIdleHours(activity, prefs)
-                    3 -> toggleHighContrast(activity)
+                    2 -> showHistory(activity, prefs)
+                    3 -> chooseIdleHours(activity, prefs)
+                    4 -> toggleHighContrast(activity)
                 }
+            }
+            .show()
+    }
+
+    private fun changed(activity: Activity) {
+        changeListener?.takeIf { it.first === activity }?.second?.invoke()
+    }
+
+    // ---------------------------------------------------------------- recently watched & previous channel
+
+    private val historySizes = intArrayOf(6, 12, 20, 30)
+    private val historySeconds = intArrayOf(5, 10, 30, 60)
+
+    private fun showHistory(activity: Activity, prefs: Prefs) {
+        fun onOff(v: Boolean) = activity.getString(if (v) R.string.on else R.string.off)
+        val items = arrayOf(
+            "${activity.getString(R.string.history_category)}:  ${onOff(prefs.historyEnabled)}",
+            "${activity.getString(R.string.history_size)}:  ${prefs.historySize}",
+            "${activity.getString(R.string.history_min)}:  ${activity.getString(R.string.seconds, prefs.historyMinSeconds)}",
+            "${activity.getString(R.string.left_key)}:  " +
+                activity.getString(if (prefs.leftKeyPrevious) R.string.left_key_previous else R.string.left_key_info),
+            activity.getString(R.string.history_clear),
+        )
+        AlertDialog.Builder(activity)
+            .setTitle(R.string.history_settings)
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> {
+                        prefs.historyEnabled = !prefs.historyEnabled
+                        changed(activity)
+                        showHistory(activity, prefs)
+                    }
+                    1 -> choose(activity, R.string.history_size, historySizes.map { "$it" }, historySizes.indexOf(prefs.historySize)) {
+                        prefs.historySize = historySizes[it]
+                        changed(activity)
+                        showHistory(activity, prefs)
+                    }
+                    2 -> choose(
+                        activity, R.string.history_min,
+                        historySeconds.map { s -> activity.getString(R.string.seconds, s) },
+                        historySeconds.indexOf(prefs.historyMinSeconds),
+                    ) {
+                        prefs.historyMinSeconds = historySeconds[it]
+                        showHistory(activity, prefs)
+                    }
+                    3 -> {
+                        prefs.leftKeyPrevious = !prefs.leftKeyPrevious
+                        showHistory(activity, prefs)
+                    }
+                    4 -> AlertDialog.Builder(activity)
+                        .setMessage(R.string.history_clear_confirm)
+                        .setPositiveButton(R.string.delete) { _, _ ->
+                            prefs.clearAllHistory()
+                            changed(activity)
+                            Toast.makeText(activity, R.string.history_cleared, Toast.LENGTH_SHORT).show()
+                        }
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                }
+            }
+            .setNegativeButton(R.string.back) { _, _ -> show(activity) }
+            .show()
+    }
+
+    private fun choose(activity: Activity, title: Int, labels: List<String>, current: Int, onPick: (Int) -> Unit) {
+        AlertDialog.Builder(activity)
+            .setTitle(title)
+            .setSingleChoiceItems(labels.toTypedArray(), current.coerceAtLeast(0)) { dialog, which ->
+                dialog.dismiss()
+                onPick(which)
             }
             .show()
     }
