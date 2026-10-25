@@ -48,6 +48,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
     private lateinit var chEmpty: TextView
     private lateinit var catLeft: View
     private lateinit var catRight: View
+    private lateinit var catPos: TextView
     private lateinit var chUp: View
     private lateinit var chDown: View
     private lateinit var previewSlot: View
@@ -109,6 +110,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         chList = findViewById(R.id.chList)
         catLeft = findViewById(R.id.catLeft)
         catRight = findViewById(R.id.catRight)
+        catPos = findViewById(R.id.catPos)
         chUp = findViewById(R.id.chUp)
         chDown = findViewById(R.id.chDown)
         chEmpty = findViewById(R.id.chEmpty)
@@ -296,6 +298,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         prefs.setLastCategory(pid, item.key)
         catAdapter.selected = index
         catAdapter.notifyDataSetChanged()
+        catPos.text = "${index + 1} / ${cats.size}"
     }
 
     private fun showChannels(list: List<Channel>) {
@@ -315,8 +318,45 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         if (cats.isEmpty()) return
         val i = ((catSel + delta) % cats.size + cats.size) % cats.size
         selectCategory(i)
-        scrollTo(catList, i)
+        revealCategory(i, delta)
     }
+
+    /**
+     * Lets the highlight travel across the bar and only scrolls once it gets within one chip of
+     * the edge, so the movement is visible and the next category in that direction is always shown.
+     */
+    private fun revealCategory(index: Int, direction: Int) {
+        val lm = catList.layoutManager as LinearLayoutManager
+        // scrollToPosition() scrolls the minimum needed to bring that chip fully into view.
+        val neighbor = (index + if (direction >= 0) 1 else -1).coerceIn(0, cats.size - 1)
+        lm.scrollToPosition(neighbor)
+        catList.post {
+            // After a wrap-around jump the selected chip itself may still be off-screen.
+            val first = lm.findFirstCompletelyVisibleItemPosition()
+            val last = lm.findLastCompletelyVisibleItemPosition()
+            if (first != RecyclerView.NO_POSITION && (index < first || index > last)) lm.scrollToPosition(index)
+        }
+    }
+
+    /** Full vertical list of categories, for playlists with too many to step through. */
+    private fun showCategoryPicker() {
+        if (cats.isEmpty()) return
+        val labels = cats.map { item ->
+            val star = if (item.type == CatItem.FAV) "★  " else ""
+            "$star${item.label}   (${item.count})"
+        }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle(R.string.categories)
+            .setSingleChoiceItems(labels, catSel) { dialog, which ->
+                dialog.dismiss()
+                selectCategory(which)
+                lm(catList).scrollToPositionWithOffset((which - 1).coerceAtLeast(0), 0)
+                setFocus(Focus.CHANNELS)
+            }
+            .show()
+    }
+
+    private fun lm(list: RecyclerView) = list.layoutManager as LinearLayoutManager
 
     private fun moveChannel(delta: Int) {
         if (channels.isEmpty()) return
@@ -803,7 +843,7 @@ class MainActivity : BaseActivity(), PlayerHolder.Listener {
         }
         when (focus) {
             Focus.TOP -> topAction(topSel)
-            Focus.CATEGORIES -> setFocus(Focus.CHANNELS)
+            Focus.CATEGORIES -> showCategoryPicker()
             Focus.CHANNELS -> activateChannel()
         }
     }

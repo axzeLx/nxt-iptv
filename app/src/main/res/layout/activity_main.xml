@@ -105,7 +105,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:fadingEdgeLength="48dp"
+                android:fadingEdgeLength="20dp"
                 android:paddingTop="5dp"
                 android:paddingBottom="5dp"
                 android:requiresFadingEdge="horizontal"
@@ -120,6 +120,18 @@
                 android:textColor="@color/accent"
                 android:textSize="14sp"
                 android:textStyle="bold" />
+
+            <!-- "8 / 27": where we are among the categories -->
+            <TextView
+                android:id="@+id/catPos"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="6dp"
+                android:layout_marginEnd="8dp"
+                android:gravity="center"
+                android:minWidth="56dp"
+                android:textColor="@color/text_dim"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <LinearLayout
@@ -133,7 +145,7 @@
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="30"
+                android:layout_weight="36"
                 android:background="@drawable/bg_panel">
 
                 <LinearLayout
@@ -186,7 +198,7 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_marginStart="10dp"
-                android:layout_weight="70"
+                android:layout_weight="64"
                 android:orientation="vertical">
 
                 <com.nxt.iptv.ui.RatioFrameLayout

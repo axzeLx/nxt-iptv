@@ -13,8 +13,8 @@ android {
         minSdk = 21
         // 29 keeps legacy (non-scoped) storage, so playlists can be read straight off USB drives on TVs.
         targetSdk = 29
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     buildTypes {
